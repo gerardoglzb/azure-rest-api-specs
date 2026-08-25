@@ -28,7 +28,27 @@ These are the global settings for the Storage API.
 ``` yaml
 openapi-type: arm
 openapi-subtype: rpaas
-tag: package-2026-04
+tag: package-2026-09
+```
+
+### Tag: package-2026-09
+
+These settings apply only when `--tag=package-2026-09` is specified on the command line.
+
+```yaml $(tag) == 'package-2026-09'
+input-file:
+  - Microsoft.Storage/stable/2026-09-01/openapi.json
+
+directive:
+  - where:
+    - $.paths["/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Storage/storageAccounts/{accountName}/connectors/{connectorName}"].patch.parameters[5].schema.properties.properties
+    - $.paths["/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Storage/storageAccounts/{accountName}/dataShares/{dataShareName}"].patch.parameters[5].schema.properties.properties
+    - $.paths["/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Storage/storageAccounts/{accountName}/blobAccessPointConfigurations/{blobAccessPointConfigurationName}"].patch.parameters[5].schema.properties.properties
+    suppress: PatchBodyParametersSchema
+    reason: >
+      Connector and DataShare PATCH carry forward their existing polymorphic
+      discriminator requirements. Blob Access Point also requires a source
+      discriminator to select the concrete polymorphic shape being updated.
 ```
 
 ### Tag: package-2026-04
