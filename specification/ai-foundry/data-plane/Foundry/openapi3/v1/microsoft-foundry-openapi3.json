@@ -805,7 +805,8 @@
         "x-ms-foundry-meta": {
           "conditional_previews": [
             "WorkflowAgents=V1Preview",
-            "ExternalAgents=V1Preview"
+            "ExternalAgents=V1Preview",
+            "GitHubCopilot=V1Preview"
           ]
         },
         "tags": [
@@ -2716,7 +2717,8 @@
         "x-ms-foundry-meta": {
           "conditional_previews": [
             "WorkflowAgents=V1Preview",
-            "ExternalAgents=V1Preview"
+            "ExternalAgents=V1Preview",
+            "GitHubCopilot=V1Preview"
           ]
         },
         "tags": [
@@ -17298,7 +17300,8 @@
         "x-ms-foundry-meta": {
           "conditional_previews": [
             "WorkflowAgents=V1Preview",
-            "ExternalAgents=V1Preview"
+            "ExternalAgents=V1Preview",
+            "GitHubCopilot=V1Preview"
           ]
         }
       },
@@ -17306,9 +17309,10 @@
         "type": "string",
         "enum": [
           "WorkflowAgents=V1Preview",
-          "ExternalAgents=V1Preview"
+          "ExternalAgents=V1Preview",
+          "GitHubCopilot=V1Preview"
         ],
-        "description": "Feature opt-in keys for agent definition operations supporting hosted or workflow agents."
+        "description": "Feature opt-in keys for agent definition operations supporting conditional preview features."
       },
       "AgentEndpointAuthorizationScheme": {
         "type": "object",
@@ -17325,7 +17329,8 @@
           "mapping": {
             "Entra": "#/components/schemas/EntraAuthorizationScheme",
             "BotService": "#/components/schemas/BotServiceAuthorizationScheme",
-            "BotServiceRbac": "#/components/schemas/BotServiceRbacAuthorizationScheme"
+            "BotServiceRbac": "#/components/schemas/BotServiceRbacAuthorizationScheme",
+            "BotServiceTenant": "#/components/schemas/BotServiceTenantAuthorizationScheme"
           }
         }
       },
@@ -17339,7 +17344,8 @@
             "enum": [
               "Entra",
               "BotService",
-              "BotServiceRbac"
+              "BotServiceRbac",
+              "BotServiceTenant"
             ]
           }
         ]
@@ -17511,6 +17517,25 @@
           }
         ],
         "description": "A trace source that selects traces by agent reference with time-based filtering."
+      },
+      "AgentHarness": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "The type of managed harness."
+          }
+        },
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "github_copilot_preview": "#/components/schemas/GitHubCopilotHarness"
+          }
+        },
+        "description": "A managed runtime and agent loop used to execute a prompt agent."
       },
       "AgentIdentity": {
         "type": "object",
@@ -19786,6 +19811,25 @@
           }
         ]
       },
+      "BotServiceTenantAuthorizationScheme": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "BotServiceTenant"
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AgentEndpointAuthorizationScheme"
+          }
+        ]
+      },
       "BrowserAutomationPreviewTool": {
         "type": "object",
         "required": [
@@ -19941,6 +19985,44 @@
           }
         },
         "description": "Definition of input parameters for the Browser Automation Tool."
+      },
+      "BuiltInCapabilitiesConfiguration": {
+        "type": "object",
+        "properties": {
+          "allowed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BuiltInCapability"
+            },
+            "description": "The built-in capabilities that may be used. If omitted, all capabilities permitted by service and organizational policy are allowed."
+          },
+          "denied": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BuiltInCapability"
+            },
+            "description": "The built-in capabilities that may not be used. Denied capabilities take precedence over allowed capabilities."
+          }
+        },
+        "description": "Configuration that allows or denies GitHub Copilot built-in capabilities."
+      },
+      "BuiltInCapability": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "string",
+            "enum": [
+              "filesystem_read",
+              "filesystem_write",
+              "shell",
+              "web",
+              "subagents"
+            ]
+          }
+        ],
+        "description": "A customer-configurable GitHub Copilot built-in capability."
       },
       "CaptureStructuredOutputsTool": {
         "type": "object",
@@ -20623,7 +20705,8 @@
             "x-ms-foundry-meta": {
               "conditional_previews": [
                 "WorkflowAgents=V1Preview",
-                "ExternalAgents=V1Preview"
+                "ExternalAgents=V1Preview",
+                "GitHubCopilot=V1Preview"
               ]
             }
           },
@@ -20655,7 +20738,8 @@
         "x-ms-foundry-meta": {
           "conditional_previews": [
             "WorkflowAgents=V1Preview",
-            "ExternalAgents=V1Preview"
+            "ExternalAgents=V1Preview",
+            "GitHubCopilot=V1Preview"
           ]
         }
       },
@@ -20790,7 +20874,8 @@
             "x-ms-foundry-meta": {
               "conditional_previews": [
                 "WorkflowAgents=V1Preview",
-                "ExternalAgents=V1Preview"
+                "ExternalAgents=V1Preview",
+                "GitHubCopilot=V1Preview"
               ]
             }
           },
@@ -20806,7 +20891,8 @@
         "x-ms-foundry-meta": {
           "conditional_previews": [
             "WorkflowAgents=V1Preview",
-            "ExternalAgents=V1Preview"
+            "ExternalAgents=V1Preview",
+            "GitHubCopilot=V1Preview"
           ]
         }
       },
@@ -24533,6 +24619,55 @@
         },
         "description": "Details of a function tool call."
       },
+      "GitHubCopilotHarness": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "github_copilot_preview"
+            ],
+            "description": "The type of managed harness. Always `github_copilot_preview`."
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkillReference"
+            },
+            "description": "The Foundry skills to provision into the managed harness environment."
+          },
+          "environment": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HarnessEnvironment"
+              }
+            ],
+            "description": "The managed compute environment configuration for the harness."
+          },
+          "builtin_capabilities": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BuiltInCapabilitiesConfiguration"
+              }
+            ],
+            "description": "Controls access to customer-configurable GitHub Copilot built-in capabilities."
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AgentHarness"
+          }
+        ],
+        "description": "The GitHub Copilot managed harness for prompt agents.",
+        "x-ms-foundry-meta": {
+          "required_previews": [
+            "GitHubCopilot=V1Preview"
+          ]
+        }
+      },
       "GitHubIssueEvent": {
         "anyOf": [
           {
@@ -24605,6 +24740,31 @@
             "Routines=V1Preview"
           ]
         }
+      },
+      "HarnessEnvironment": {
+        "type": "object",
+        "properties": {
+          "cpu": {
+            "type": "string",
+            "description": "The CPU allocated to the harness environment. CPU and memory must be specified together.",
+            "examples": [
+              "1"
+            ]
+          },
+          "memory": {
+            "type": "string",
+            "description": "The memory allocated to the harness environment. CPU and memory must be specified together.",
+            "examples": [
+              "2Gi"
+            ]
+          },
+          "idle_timeout_seconds": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The number of seconds without agent activity before the harness environment is suspended."
+          }
+        },
+        "description": "Managed compute environment settings for a harness."
       },
       "HeaderIsolationKeySource": {
         "type": "object",
@@ -51533,6 +51693,14 @@
             "type": "string",
             "description": "The model deployment to use for this agent."
           },
+          "harness": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentHarness"
+              }
+            ],
+            "description": "The managed runtime and agent loop used to execute this prompt agent."
+          },
           "instructions": {
             "anyOf": [
               {
@@ -53372,6 +53540,27 @@
         "pattern": "^[a-z0-9]([a-z0-9\\-]*[a-z0-9])?$",
         "description": "A skill name following the agentskills.io spec: lowercase letters, numbers, and hyphens only. Must not start or end with a hyphen or contain consecutive hyphens."
       },
+      "SkillReference": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SkillName"
+              }
+            ],
+            "description": "The name of the skill."
+          },
+          "version": {
+            "type": "string",
+            "description": "The skill version. If omitted, the current default version is resolved and pinned when the agent version is created."
+          }
+        },
+        "description": "A reference to a versioned Foundry skill."
+      },
       "SkillVersion": {
         "type": "object",
         "required": [
@@ -54713,7 +54902,8 @@
             "x-ms-foundry-meta": {
               "conditional_previews": [
                 "WorkflowAgents=V1Preview",
-                "ExternalAgents=V1Preview"
+                "ExternalAgents=V1Preview",
+                "GitHubCopilot=V1Preview"
               ]
             }
           },
