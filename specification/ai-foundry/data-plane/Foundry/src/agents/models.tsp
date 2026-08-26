@@ -1,6 +1,5 @@
-import "../openai-responses/models.tsp";
+import "../openai/responses/models.tsp";
 import "../common/servicepatterns.tsp";
-import "../skills/models.tsp";
 
 using TypeSpec.Http;
 using TypeSpec.OpenAPI;
@@ -12,11 +11,11 @@ const AllConditionalAgentDefinitionPreviews = #{
   conditional_previews: #[
     AgentDefinitionOptInKeys.workflow_agents_v1_preview,
     AgentDefinitionOptInKeys.external_agents_v1_preview,
-    AgentDefinitionOptInKeys.github_copilot_v1_preview
+    AgentDefinitionOptInKeys.draft_agents_v1_preview
   ],
 };
 
-@extension("x-ms-foundry-meta", AllConditionalAgentDefinitionPreviews)
+#suppress "@azure-tools/typespec-client-generator-core/csharp-model-suffix" "Name kept for backward compatibility"
 model CreateAgentVersionRequest {
   ...MetadataPropertyForRequest;
 
@@ -30,8 +29,18 @@ model CreateAgentVersionRequest {
 
   @doc("The blueprint reference for the agent.")
   blueprint_reference?: AgentBlueprintReference;
+
+  @doc("(Preview) Whether this agent version is a draft (candidate) rather than a release. The service defaults to `false` if a value is not specified by the caller. Draft versions are recorded but excluded from default 'latest' resolution and are not auto-promoted.")
+  @extension(
+    "x-ms-foundry-meta",
+    #{
+      conditional_previews: #[AgentDefinitionOptInKeys.draft_agents_v1_preview],
+    }
+  )
+  draft?: boolean = false;
 }
 
+#suppress "@azure-tools/typespec-client-generator-core/csharp-model-suffix" "Name kept for backward compatibility"
 model CreateAgentVersionFromManifestRequest {
   ...MetadataPropertyForRequest;
 
@@ -46,6 +55,7 @@ model CreateAgentVersionFromManifestRequest {
   parameter_values: Record<unknown>;
 }
 
+#suppress "@azure-tools/typespec-client-generator-core/csharp-model-suffix" "Name kept for backward compatibility"
 model CreateAgentFromManifestRequest {
   @doc("""
     The unique name that identifies the agent. Name can be used to retrieve/update/delete the agent.
@@ -59,10 +69,12 @@ model CreateAgentFromManifestRequest {
   ...CreateAgentVersionFromManifestRequest;
 }
 
+#suppress "@azure-tools/typespec-client-generator-core/csharp-model-suffix" "Name kept for backward compatibility"
 model UpdateAgentFromManifestRequest {
   ...CreateAgentVersionFromManifestRequest;
 }
 
+#suppress "@azure-tools/typespec-client-generator-core/csharp-model-suffix" "Name kept for backward compatibility"
 @extension("x-ms-foundry-meta", AllConditionalAgentDefinitionPreviews)
 model CreateAgentRequest {
   @doc("""
@@ -86,10 +98,13 @@ model CreateAgentRequest {
   agent_card?: AgentCard;
 }
 
+#suppress "@azure-tools/typespec-client-generator-core/csharp-model-suffix" "Name kept for backward compatibility"
+@extension("x-ms-foundry-meta", AllConditionalAgentDefinitionPreviews)
 model UpdateAgentRequest {
-  ...CreateAgentVersionRequest;
+  ...OmitProperties<CreateAgentVersionRequest, "draft">;
 }
 
+#suppress "@azure-tools/typespec-client-generator-core/csharp-model-suffix" "Name kept for backward compatibility"
 model PatchAgentRequest {
   @doc("The endpoint configuration for the agent")
   agent_endpoint?: AgentEndpointConfig;
@@ -117,6 +132,17 @@ union AgentState {
   disabled: "disabled",
 }
 
+@doc("Indicates the source of an agent's operational state. Empty when the state is not derived from a specific source.")
+union AgentStateSource {
+  string,
+
+  @doc("The state is derived from the agent's instance identity.")
+  agent_instance_identity: "agent_instance_identity",
+
+  @doc("The state is derived from the agent's blueprint.")
+  agent_blueprint: "agent_blueprint",
+}
+
 model AgentObject {
   @doc("The object type, which is always 'agent'.")
   object: AgentObjectType.agent;
@@ -132,6 +158,11 @@ model AgentObject {
   @visibility(Lifecycle.Read)
   state: AgentState;
 
+  @doc("The source of the agent's operational state. When the agent is disabled, indicates where the disabled state originates from. Empty when not derived from a specific source.")
+  @visibility(Lifecycle.Read)
+  state_source?: AgentStateSource;
+
+  #suppress "@azure-tools/typespec-azure-core/no-unnamed-types" "Type kept for backward compatibility"
   @doc("The latest version of the agent.")
   versions: {
     latest: AgentVersionObject;
@@ -179,6 +210,15 @@ model AgentVersionObject {
   created_at: FoundryTimestamp;
 
   definition: AgentDefinition;
+
+  @doc("Whether this agent version is a draft (candidate) rather than a release. Draft versions are recorded but excluded from default 'latest' resolution and are not auto-promoted. Defaults to false.")
+  @extension(
+    "x-ms-foundry-meta",
+    #{
+      conditional_previews: #[AgentDefinitionOptInKeys.draft_agents_v1_preview],
+    }
+  )
+  draft?: boolean = false;
 
   @doc("The provisioning status of the agent version. Defaults to 'active' for non-hosted agents. For hosted agents, reflects infrastructure readiness.")
   status?: AgentVersionStatus;
@@ -252,7 +292,6 @@ model RaiConfig {
 }
 
 @discriminator("kind")
-@extension("x-ms-foundry-meta", AllConditionalAgentDefinitionPreviews)
 model AgentDefinition {
   kind: AgentKind;
 
@@ -266,9 +305,6 @@ model PromptAgentDefinition extends AgentDefinition {
 
   @doc("The model deployment to use for this agent.")
   `model`: string;
-
-  @doc("The managed runtime and agent loop used to execute this prompt agent.")
-  harness?: AgentHarness;
 
   @doc("A system (or developer) message inserted into the model's context.")
   instructions?: string | null;
@@ -300,7 +336,7 @@ model PromptAgentDefinition extends AgentDefinition {
     """)
   tools?: OpenAI.Tool[];
 
-  #suppress "@azure-tools/typespec-azure-core/no-unnamed-union" ""
+  #suppress "@azure-tools/typespec-azure-core/no-unnamed-types" ""
   @doc("""
     How the model should select which tool (or tools) to use when generating a response.
     See the `tools` parameter to see how to specify which tools the model can call.
@@ -316,92 +352,20 @@ model PromptAgentDefinition extends AgentDefinition {
   structured_inputs?: Record<StructuredInputDefinition>;
 }
 
-@doc("A managed runtime and agent loop used to execute a prompt agent.")
-@discriminator("type")
-model AgentHarness {
-  @doc("The type of managed harness.")
-  type: string;
-}
-
-@doc("The GitHub Copilot managed harness for prompt agents.")
-@extension(
-  "x-ms-foundry-meta",
-  #{ required_previews: #[AgentDefinitionOptInKeys.github_copilot_v1_preview] }
-)
-model GitHubCopilotHarness extends AgentHarness {
-  @doc("The type of managed harness. Always `github_copilot_preview`.")
-  type: "github_copilot_preview";
-
-  @doc("The Foundry skills to provision into the managed harness environment.")
-  skills?: SkillReference[];
-
-  @doc("The managed compute environment configuration for the harness.")
-  environment?: HarnessEnvironment;
-
-  @doc("Controls access to customer-configurable GitHub Copilot built-in capabilities.")
-  builtin_capabilities?: BuiltInCapabilitiesConfiguration;
-}
-
-@doc("A reference to a versioned Foundry skill.")
-model SkillReference {
-  @doc("The name of the skill.")
-  name: SkillName;
-
-  @doc("The skill version. If omitted, the current default version is resolved and pinned when the agent version is created.")
-  version?: string;
-}
-
-@doc("Managed compute environment settings for a harness.")
-model HarnessEnvironment {
-  @doc("The CPU allocated to the harness environment. CPU and memory must be specified together.")
-  @example("1")
-  cpu?: string;
-
-  @doc("The memory allocated to the harness environment. CPU and memory must be specified together.")
-  @example("2Gi")
-  memory?: string;
-
-  @doc("The number of seconds without agent activity before the harness environment is suspended.")
-  idle_timeout_seconds?: int32;
-}
-
-@doc("Configuration that allows or denies GitHub Copilot built-in capabilities.")
-model BuiltInCapabilitiesConfiguration {
-  @doc("The built-in capabilities that may be used. If omitted, all capabilities permitted by service and organizational policy are allowed.")
-  allowed?: BuiltInCapability[];
-
-  @doc("The built-in capabilities that may not be used. Denied capabilities take precedence over allowed capabilities.")
-  denied?: BuiltInCapability[];
-}
-
-@doc("A customer-configurable GitHub Copilot built-in capability.")
-union BuiltInCapability {
-  string,
-
-  @doc("Read and search files in the harness workspace.")
-  filesystem_read: "filesystem_read",
-
-  @doc("Create and modify files in the harness workspace.")
-  filesystem_write: "filesystem_write",
-
-  @doc("Execute operating-system commands.")
-  shell: "shell",
-
-  @doc("Fetch content and search external network resources.")
-  web: "web",
-
-  @doc("Delegate work to additional agents.")
-  subagents: "subagents",
-}
-
 /**
  * Configuration options for a text response from the model. Can be plain text or structured JSON data.
  */
+#suppress "@azure-tools/typespec-client-generator-core/csharp-model-suffix" "Name kept for backward compatibility"
 model PromptAgentDefinitionTextOptions {
   format?: OpenAI.TextResponseFormatConfiguration;
 }
 
-@doc("The workflow agent definition.")
+/**
+ * The workflow agent definition. Microsoft Foundry is retiring workflows on December 1, 2026.
+ * If you're looking to build new workflows, use Microsoft Agent Framework. To migrate existing workflows,
+ * see the [Migration guide](https://learn.microsoft.com/azure/foundry/agents/concepts/workflow#migration-guide).
+ */
+#deprecated "deprecated"
 @extension(
   "x-ms-foundry-meta",
   #{ required_previews: #[AgentDefinitionOptInKeys.workflow_agents_v1_preview] }
@@ -418,6 +382,30 @@ model ContainerConfiguration {
   @doc("The container image for the hosted agent.")
   @example("my-registry.azurecr.io/my-hosted-agent:latest")
   image: string;
+
+  @doc("""
+    The id (or name) of the Foundry project connection that provides the credentials used to
+    authenticate to the private container registry hosting `image`. The connection abstracts the
+    auth mechanism — for example a managed-identity-federated token exchange, or a username/token
+    secret — so registry credentials are never part of the agent definition. Omit for public images
+    or registries already reachable by the platform's default identity (for example, Azure Container Registry).
+    """)
+  @example("my-registry-connection")
+  registry_connection_id?: string;
+}
+
+@doc("Session defaults applied to sessions created for a hosted agent version.")
+model SessionConfiguration {
+  @doc("""
+    The idle duration, in seconds, before a session's sandbox is suspended. Optional — when
+    unset, the server default of 900 seconds is used. Must be between 300 and 3600 seconds
+    (inclusive).
+    """)
+  @minValue(duration.fromISO("PT300S"))
+  @maxValue(duration.fromISO("PT3600S"))
+  @example(duration.fromISO("PT300S"))
+  @encode(DurationKnownEncoding.seconds, int32)
+  idle_timeout_seconds?: duration = duration.fromISO("PT900S");
 }
 
 @doc("Code-based deployment configuration for a hosted agent.")
@@ -478,12 +466,6 @@ model ExternalAgentDefinition extends AgentDefinition {
 model HostedAgentDefinition extends AgentDefinition {
   kind: AgentKind.hosted;
 
-  @doc("""
-    An array of tools the hosted agent's model may call while generating a response. You
-    can specify which tool to use by setting the `tool_choice` parameter.
-    """)
-  tools?: OpenAI.Tool[];
-
   /**
    * When specify the `cpu` and `memory`, the total CPU and memory allocated to all the containers in a container app must add up to one of the following combinations.
    * See [vCPU and memory allocation requirements](https://learn.microsoft.com/azure/container-apps/containers#allocations).
@@ -515,6 +497,10 @@ model HostedAgentDefinition extends AgentDefinition {
 
   @doc("Optional customer-supplied telemetry configuration for exporting container logs, traces, and metrics.")
   telemetry_config?: TelemetryConfig;
+
+  @doc("Optional session defaults (for example, the idle timeout) applied to sessions created for this agent version.")
+  @example(#{ idle_timeout_seconds: duration.fromISO("PT300S") })
+  session_configuration?: SessionConfiguration;
 }
 
 @doc("The container app agent definition.")
@@ -562,6 +548,7 @@ alias ListAgentQueryParameters = {
   ...CommonPageQueryParameters;
 };
 
+#suppress "@azure-tools/typespec-client-generator-core/csharp-model-suffix" "Name kept for backward compatibility"
 @doc("A deleted agent Object")
 model DeleteAgentResponse {
   @doc("The object type. Always 'agent.deleted'.")
@@ -574,6 +561,7 @@ model DeleteAgentResponse {
   deleted: boolean;
 }
 
+#suppress "@azure-tools/typespec-client-generator-core/csharp-model-suffix" "Name kept for backward compatibility"
 @doc("A deleted agent version Object")
 model DeleteAgentVersionResponse {
   @doc("The object type. Always 'agent.version.deleted'.")
@@ -660,9 +648,6 @@ model AgentEndpointAuthorizationScheme {
 
 model EntraAuthorizationScheme extends AgentEndpointAuthorizationScheme {
   type: AgentEndpointAuthorizationSchemeType.Entra;
-
-  @doc("The source from which the per-user isolation key is derived for requests authorized via this scheme. Defaults to Entra-based isolation when omitted.")
-  isolation_key_source?: IsolationKeySource;
 }
 
 model BotServiceAuthorizationScheme extends AgentEndpointAuthorizationScheme {
@@ -679,19 +664,6 @@ model BotServiceTenantAuthorizationScheme
   type: AgentEndpointAuthorizationSchemeType.BotServiceTenant;
 }
 
-@discriminator("kind")
-model IsolationKeySource {
-  kind: IsolationKeySourceKind;
-}
-
-model EntraIsolationKeySource extends IsolationKeySource {
-  kind: IsolationKeySourceKind.Entra;
-}
-
-model HeaderIsolationKeySource extends IsolationKeySource {
-  kind: IsolationKeySourceKind.Header;
-}
-
 union AgentEndpointAuthorizationSchemeType {
   string,
   Entra: "Entra",
@@ -700,18 +672,121 @@ union AgentEndpointAuthorizationSchemeType {
   BotServiceTenant: "BotServiceTenant",
 }
 
-union IsolationKeySourceKind {
-  string,
-  Entra: "Entra",
-  Header: "Header",
+@doc("Per-protocol configuration for the agent endpoint.")
+model ProtocolConfiguration {
+  @doc("Configuration for the activity protocol.")
+  activity?: ActivityProtocolConfiguration;
+
+  @doc("Configuration for the responses protocol.")
+  responses?: ResponsesProtocolConfiguration;
+
+  @doc("Configuration for the A2A protocol.")
+  a2a?: A2AProtocolConfiguration;
+
+  @doc("Configuration for the MCP protocol.")
+  mcp?: McpProtocolConfiguration;
+
+  @doc("Configuration for the invocations protocol.")
+  invocations?: InvocationsProtocolConfiguration;
+
+  @doc("Configuration for the WebSocket-based invocations protocol.")
+  invocations_ws?: InvocationsWsProtocolConfiguration;
 }
+
+@doc("An access boundary for the activity protocol.")
+union ActivityProtocolAccessBoundary {
+  string,
+
+  @doc("Allows read access to one-on-one developer conversations.")
+  read_1on1_developers: "read.1on1.developers",
+
+  @doc("Allows read access to one-on-one manager conversations.")
+  read_1on1_manager: "read.1on1.manager",
+
+  @doc("Allows read access to allowlisted one-on-one conversations.")
+  read_1on1_allowlisted: "read.1on1.allowlisted",
+
+  @doc("Allows read access to tenant-wide one-on-one conversations.")
+  read_1on1_tenant: "read.1on1.tenant",
+
+  @doc("Allows write access to one-on-one developer conversations.")
+  write_1on1_developers: "write.1on1.developers",
+
+  @doc("Allows write access to one-on-one manager conversations.")
+  write_1on1_manager: "write.1on1.manager",
+
+  @doc("Allows write access to allowlisted one-on-one conversations.")
+  write_1on1_allowlisted: "write.1on1.allowlisted",
+
+  @doc("Allows write access to tenant-wide one-on-one conversations.")
+  write_1on1_tenant: "write.1on1.tenant",
+
+  @doc("Allows read access to developer group conversations.")
+  read_group_developers: "read.group.developers",
+
+  @doc("Allows read access to allowlisted group conversations.")
+  read_group_allowlisted: "read.group.allowlisted",
+
+  @doc("Allows read access to group conversations where a manager is invited.")
+  read_group_manager_invited: "read.group.manager-invited",
+
+  @doc("Allows read access to group conversations where a manager is present.")
+  read_group_manager_present: "read.group.manager-present",
+
+  @doc("Allows read access to tenant-wide group conversations.")
+  read_group_tenant: "read.group.tenant",
+
+  @doc("Allows write access to developer group conversations.")
+  write_group_developers: "write.group.developers",
+
+  @doc("Allows write access to allowlisted group conversations.")
+  write_group_allowlisted: "write.group.allowlisted",
+
+  @doc("Allows write access to group conversations where a manager is invited.")
+  write_group_manager_invited: "write.group.manager-invited",
+
+  @doc("Allows write access to group conversations where a manager is present.")
+  write_group_manager_present: "write.group.manager-present",
+
+  @doc("Allows write access to tenant-wide group conversations.")
+  write_group_tenant: "write.group.tenant",
+}
+
+@doc("Configuration specific to the activity protocol.")
+model ActivityProtocolConfiguration {
+  @doc("Whether to enable the M365 public endpoint for the activity protocol.")
+  enable_m365_public_endpoint?: boolean;
+
+  @doc("The access boundaries for the activity protocol.")
+  @visibility(Lifecycle.Read)
+  access_boundaries?: ActivityProtocolAccessBoundary[];
+}
+
+@doc("Configuration specific to the responses protocol.")
+model ResponsesProtocolConfiguration {}
+
+@doc("Configuration specific to the A2A protocol.")
+model A2AProtocolConfiguration {}
+
+@doc("Configuration specific to the MCP protocol.")
+model McpProtocolConfiguration {}
+
+@doc("Configuration specific to the invocations protocol.")
+model InvocationsProtocolConfiguration {}
+
+@doc("Configuration specific to the WebSocket-based invocations protocol.")
+model InvocationsWsProtocolConfiguration {}
 
 model AgentEndpointConfig {
   @doc("The version selector of the agent endpoint determines how traffic is routed to different versions of the agent.")
   version_selector?: VersionSelector;
 
-  @doc("The protocols that the agent supports")
+  @removed(Versions.v1)
+  @doc("Deprecated: Use protocol_configuration instead. The presence of a key in protocol_configuration declares the protocol is enabled.")
   protocols?: AgentEndpointProtocol[];
+
+  @doc("Per-protocol configuration for the agent endpoint.")
+  protocol_configuration?: ProtocolConfiguration;
 
   @doc("The authorization schemes supported by the agent endpoint")
   authorization_schemes?: AgentEndpointAuthorizationScheme[];
@@ -723,6 +798,20 @@ model AgentIdentity {
 
   @doc("The client ID of the agent instance. Also referred to as the instance ID")
   client_id: string;
+
+  @doc("The status of the agent identity. Present for both the agent instance identity and the agent blueprint.")
+  status?: AgentIdentityStatus;
+}
+
+@doc("The status of an agent identity, applicable to both the agent instance identity and the agent blueprint.")
+union AgentIdentityStatus {
+  string,
+
+  @doc("The agent identity is active and can be used to access resources.")
+  active: "active",
+
+  @doc("The agent identity is disabled and cannot be used to access resources.")
+  disabled: "disabled",
 }
 
 union AgentBlueprintReferenceType {
@@ -826,6 +915,7 @@ model CreateAgentFromCodeContent {
  * can route to a zip-aware handler. Streaming is preserved (`bytes` body) regardless
  * of the content-type label.
  */
+#suppress "@azure-tools/typespec-client-generator-core/csharp-model-suffix" "Name kept for backward compatibility"
 model DownloadAgentCodeResponse {
   @doc("The media type of the returned package content.")
   @header("Content-Type")
@@ -935,6 +1025,7 @@ model AgentSessionResource {
 // ── Session Request Models ──────────────────────────────
 
 /** Request body for creating a new agent session. */
+#suppress "@azure-tools/typespec-client-generator-core/csharp-model-suffix" "Name kept for backward compatibility"
 @doc("Request to create a new agent session.")
 model CreateAgentSessionRequest {
   /** Optional caller-provided session ID. If specified, it must be unique within the agent endpoint. Auto-generated if omitted. */

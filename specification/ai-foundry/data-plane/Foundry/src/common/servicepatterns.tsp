@@ -1,8 +1,11 @@
 import "@typespec/http";
 
+import "@azure-tools/typespec-azure-core";
+
 using Azure.ClientGenerator.Core;
 using TypeSpec.Http;
 using TypeSpec.Versioning;
+using Azure.Core;
 
 namespace Azure.AI.Projects;
 
@@ -83,11 +86,12 @@ op FoundryDataPlaneOperation<
 
 // ---- Feature opt-in keys & preview headers ----
 
-/** Feature opt-in keys for agent definition operations supporting conditional preview features. */
+/** Feature opt-in keys for agent definition operations supporting hosted or workflow agents. */
 union AgentDefinitionOptInKeys {
   workflow_agents_v1_preview: "WorkflowAgents=V1Preview",
   external_agents_v1_preview: "ExternalAgents=V1Preview",
-  github_copilot_v1_preview: "GitHubCopilot=V1Preview",
+  draft_agents_v1_preview: "DraftAgents=V1Preview",
+  voice_agents_v1_preview: "VoiceAgents=V1Preview",
 
   @removed(Versions.v1)
   hosted_agents_v1_preview: "HostedAgents=V1Preview",
@@ -102,11 +106,12 @@ union FoundryFeaturesOptInKeys {
   red_teams_v1_preview: "RedTeams=V1Preview",
   insights_v1_preview: "Insights=V1Preview",
   memory_stores_v1_preview: "MemoryStores=V1Preview",
-  routines_v1_preview: "Routines=V1Preview",
+  routines_v2_preview: "Routines=V2Preview",
   skills_v1_preview: "Skills=V1Preview",
   data_generation_jobs_v1_preview: "DataGenerationJobs=V1Preview",
   models_v1_preview: "Models=V1Preview",
   agents_optimization_v2_preview: "AgentsOptimization=V2Preview",
+  model_router_controls_v1_preview: "ModelRouterControls=V1Preview",
 }
 
 alias WithRequiredFoundryPreviewHeader<RequiredPreviewOptInHeader extends
@@ -165,6 +170,7 @@ op FoundryDataPlaneRequiredPreviewOperation<
 // Pagination
 // ============================================================================
 
+#suppress "@azure-tools/typespec-client-generator-core/csharp-model-suffix" "Name kept for backward compatibility"
 @doc("The response data for a requested list of items.")
 model AgentsPagedResult<T> {
   /** The requested list of items. */
@@ -180,6 +186,17 @@ model AgentsPagedResult<T> {
 
   /** A value indicating whether there are additional values available not captured in this list. */
   has_more: boolean;
+}
+
+@doc("A page of items with a URL cursor to the next page.")
+model PagedResultWithNextLink<T> {
+  /** The requested list of items. */
+  @pageItems
+  data: T[];
+
+  /** The URL to fetch the next page of results, or absent if there are no additional pages. */
+  @nextLink
+  next_link?: url;
 }
 
 alias PageLimitQueryParameter = {
@@ -349,12 +366,15 @@ union JobStatus {
   in_progress: "in_progress",
 
   /** Job completed successfully. */
+  @lroSucceeded
   succeeded: "succeeded",
 
   /** Job failed. */
+  @lroFailed
   failed: "failed",
 
   /** Job was cancelled by the caller. */
+  @lroCanceled
   cancelled: "cancelled",
 }
 
@@ -383,6 +403,7 @@ model JobLike<
 
   /** Current lifecycle status. */
   @visibility(Lifecycle.Read)
+  @lroStatus
   status: TStatus;
 
   /** Error details — populated only on failure. */

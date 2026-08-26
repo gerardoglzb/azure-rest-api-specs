@@ -22,7 +22,10 @@ interface AgentInvocations {
       @path agent_name: string;
     },
     {
+      /** The content type of the request body. */
       @header contentType: "application/json";
+
+      /** The invocation specification request body. */
       @body spec: Record<unknown>;
     }
   >;
@@ -47,7 +50,7 @@ interface AgentInvocations {
       /** The request body. */
       @body request: unknown;
 
-      ...UserIsolationKeyHeader;
+      ...UserDelegationHeader;
     },
     {
       /** Unique identifier for this invocation. */
@@ -79,7 +82,7 @@ interface AgentInvocations {
       /** The unique identifier of the invocation. */
       @path invocation_id: string;
 
-      ...UserIsolationKeyHeader;
+      ...UserDelegationHeader;
     },
     {
       /** Session ID for this invocation. Returns the session ID associated with the invocation. */
@@ -114,7 +117,7 @@ interface AgentInvocations {
       /** Optional request body. */
       @body request?: unknown;
 
-      ...UserIsolationKeyHeader;
+      ...UserDelegationHeader;
     },
     {
       /** Session ID for this invocation. Returns the session ID associated with the invocation. */
