@@ -46760,7 +46760,7 @@ components:
       x-ms-foundry-meta:
         required_previews:
           - Evaluations=V1Preview
-    GitHubCopilotBuiltInCapability:
+    GitHubCopilotBuiltInTool:
       type: string
       enum:
         - filesystem_read
@@ -46768,7 +46768,7 @@ components:
         - shell
         - web
         - subagents
-      description: A customer-configurable GitHub Copilot built-in capability.
+      description: A customer-configurable GitHub Copilot built-in tool.
     GitHubCopilotHarness:
       type: object
       required:
@@ -46791,20 +46791,20 @@ components:
         - name
       properties:
         name:
-          $ref: '#/components/schemas/GitHubCopilotBuiltInCapability'
-          description: The built-in capability to configure.
+          $ref: '#/components/schemas/GitHubCopilotBuiltInTool'
+          description: The built-in tool to configure.
         enabled:
           type: boolean
-          description: Whether the capability is enabled. If omitted, the toolset default applies.
-      description: An enablement override for a GitHub Copilot built-in capability.
+          description: Whether the built-in tool is enabled. If omitted, the toolset default applies.
+      description: An enablement override for a GitHub Copilot built-in tool.
     GitHubCopilotToolsetDefaultConfig:
       type: object
       properties:
         enabled:
           type: boolean
-          description: Whether built-in capabilities are enabled by default. Defaults to true.
+          description: Whether built-in tools are enabled by default. Defaults to true.
           default: true
-      description: The default enablement setting for GitHub Copilot built-in capabilities.
+      description: The default enablement setting for GitHub Copilot built-in tools.
     GitHubCopilotToolsetPreview:
       type: object
       required:
@@ -46817,13 +46817,13 @@ components:
           description: The type of the toolset. Always `github_copilot_toolset_preview`.
         default_config:
           $ref: '#/components/schemas/GitHubCopilotToolsetDefaultConfig'
-          description: The default configuration for built-in capabilities. If omitted, capabilities are enabled by default.
+          description: The default configuration for built-in tools. If omitted, built-in tools are enabled by default.
         configs:
           type: array
           items:
             $ref: '#/components/schemas/GitHubCopilotToolsetConfig'
-          description: Per-capability configuration overrides. Duplicate capability names are not allowed.
-      description: Configuration overrides for GitHub Copilot built-in capabilities.
+          description: Per-tool configuration overrides. Duplicate built-in tool names are not allowed.
+      description: Configuration overrides for GitHub Copilot built-in tools.
       x-ms-foundry-meta:
         required_previews:
           - GitHubCopilot=V1Preview
