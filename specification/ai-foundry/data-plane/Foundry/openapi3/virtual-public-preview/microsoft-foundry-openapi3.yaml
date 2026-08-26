@@ -49763,6 +49763,8 @@ components:
           items:
             $ref: '#/components/schemas/GitHubCopilotToolsetConfig'
           description: Per-tool configuration overrides. Duplicate built-in tool names are not allowed.
+      allOf:
+        - $ref: '#/components/schemas/OpenAI.Tool'
       description: Configuration overrides for GitHub Copilot built-in tools.
       x-ms-foundry-meta:
         required_previews:
@@ -77314,6 +77316,7 @@ components:
       discriminator:
         propertyName: type
         mapping:
+          github_copilot_toolset_preview: '#/components/schemas/GitHubCopilotToolsetPreview'
           bing_grounding: '#/components/schemas/BingGroundingTool'
           fabric_dataagent_preview: '#/components/schemas/MicrosoftFabricPreviewTool'
           sharepoint_grounding_preview: '#/components/schemas/SharepointPreviewTool'
@@ -77726,6 +77729,7 @@ components:
             - fabric_iq_preview
             - toolbox_search_preview
             - web_iq_preview
+            - github_copilot_toolset_preview
             - a2a
             - azure_ai_search
             - azure_function
@@ -79821,7 +79825,7 @@ components:
         tools:
           type: array
           items:
-            $ref: '#/components/schemas/PromptAgentTool'
+            $ref: '#/components/schemas/OpenAI.Tool'
           description: |-
             An array of tools the model may call while generating a response. You
             can specify which tool to use by setting the `tool_choice` parameter.
@@ -79849,11 +79853,6 @@ components:
         format:
           $ref: '#/components/schemas/OpenAI.TextResponseFormatConfiguration'
       description: Configuration options for a text response from the model. Can be plain text or structured JSON data.
-    PromptAgentTool:
-      anyOf:
-        - $ref: '#/components/schemas/OpenAI.Tool'
-        - $ref: '#/components/schemas/GitHubCopilotToolsetPreview'
-      description: A tool or toolset configuration available to a prompt agent.
     PromptBasedEvaluatorDefinition:
       type: object
       required:
